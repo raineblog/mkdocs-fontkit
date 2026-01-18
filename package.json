@@ -1,6 +1,6 @@
 {
   "name": "mkdocs-fontkit",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "A static analysis font kit builder. Host Adobe Fonts (Typekit), Google Fonts, and custom fonts locally with single-command build and minification.",
   "main": "scripts/build.js",
   "bin": {
