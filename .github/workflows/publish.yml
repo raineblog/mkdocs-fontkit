@@ -1,0 +1,62 @@
+name: Publish Release and NPM
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to release (e.g., 1.0.1)'
+        required: true
+        default: '1.0.0'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Update Version
+        run: |
+          npm version ${{ github.event.inputs.version }} --no-git-tag-version
+          
+      - name: Build Project
+        run: npm run build
+
+      - name: Archive production artifacts
+        run: |
+          zip -r fontkit-dist.zip dist/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/heads/')
+        with:
+          tag_name: v${{ github.event.inputs.version }}
+          name: Release v${{ github.event.inputs.version }}
+          files: fontkit-dist.zip
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to NPM
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Commit version bump
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add package.json package-lock.json
+          git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
+          git push origin HEAD:${{ github.ref }}

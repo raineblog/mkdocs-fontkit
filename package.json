@@ -1,0 +1,39 @@
+{
+  "name": "mkdocs-fontkit",
+  "version": "1.0.0",
+  "description": "A static analysis font kit builder. Host Adobe Fonts (Typekit), Google Fonts, and custom fonts locally with single-command build and minification.",
+  "main": "scripts/build.js",
+  "bin": {
+    "fontkit": "scripts/build.js"
+  },
+  "scripts": {
+    "build": "node scripts/build.js",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepublishOnly": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mkdocs/mkdocs-fontkit.git"
+  },
+  "keywords": [
+    "fonts",
+    "google-fonts",
+    "typekit",
+    "adobe-fonts",
+    "font-optimizer",
+    "self-hosted"
+  ],
+  "author": "PPR21",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.13.2",
+    "clean-css": "^5.3.3",
+    "cn-font-split": "^7.4.1",
+    "css": "^3.0.0",
+    "fs-extra": "^11.3.3"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "commonjs"
+}

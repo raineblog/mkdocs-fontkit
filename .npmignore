@@ -1,0 +1,9 @@
+# 忽略源文件，只发布构建后的字体
+src/
+node_modules/
+.git/
+.github/
+test/
+example/
+# 如果你有构建脚本，也不需要上传
+scripts/
