@@ -1,4 +1,5 @@
-name: Publish Release and NPM
+
+name: Publish Release
 
 on:
   workflow_dispatch:
@@ -16,8 +17,6 @@ jobs:
       version: ${{ github.event.inputs.version }}
     steps:
       - uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -25,7 +24,7 @@ jobs:
           node-version: '20'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
       - name: Update Version
         run: |
@@ -53,35 +52,3 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
           git push origin HEAD:${{ github.ref }}
-
-  publish:
-    needs: prep-and-release
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    strategy:
-      matrix:
-        include:
-          - registry: 'https://registry.npmjs.org'
-            token_name: 'NPM_TOKEN'
-          - registry: 'https://npm.pkg.github.com'
-            token_name: 'GITHUB_TOKEN'
-    steps:
-      - uses: actions/checkout@v6
-      - name: Setup Node
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          registry-url: ${{ matrix.registry }}
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Update Version
-        run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
-
-      - name: Publish
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets[matrix.token_name] }}
