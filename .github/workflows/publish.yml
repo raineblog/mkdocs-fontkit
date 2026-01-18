@@ -6,14 +6,14 @@ on:
       version:
         description: 'Version to release (e.g., 1.0.1)'
         required: true
-        default: '1.0.0'
 
 jobs:
-  build:
+  prep-and-release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      packages: write
+    outputs:
+      version: ${{ github.event.inputs.version }}
     steps:
       - uses: actions/checkout@v6
         with:
@@ -23,7 +23,6 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: '20'
-          registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
         run: npm install
@@ -41,17 +40,11 @@ jobs:
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/heads/')
         with:
           tag_name: v${{ github.event.inputs.version }}
           name: Release v${{ github.event.inputs.version }}
           files: fontkit-dist.zip
           token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish to NPM
-        run: npm publish
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Commit version bump
         run: |
@@ -60,3 +53,36 @@ jobs:
           git add package.json package-lock.json
           git commit -m "chore: bump version to ${{ github.event.inputs.version }}"
           git push origin HEAD:${{ github.ref }}
+
+  publish:
+    needs: prep-and-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - registry: 'https://registry.npmjs.org'
+            token_name: 'NPM_TOKEN'
+          - registry: 'https://npm.pkg.github.com'
+            token_name: 'GITHUB_TOKEN'
+    steps:
+      - uses: actions/checkout@v6
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+          registry-url: ${{ matrix.registry }}
+          scope: '@mkdocs'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Update Version
+        run: npm version ${{ github.event.inputs.version }} --no-git-tag-version
+
+      - name: Publish
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets[matrix.token_name] }}
