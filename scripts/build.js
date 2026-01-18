@@ -313,7 +313,6 @@ async function processTypekit(kits) {
   font-display: ${desc.display || 'auto'};
   src: url(${relativePath}) format('woff2');
   unicode-range: ${desc.unicodeRange || 'U+0-10FFFF'};
-  font-feature-settings: ${desc.featureSettings || '"liga" 0'};
 }
 `;
             }

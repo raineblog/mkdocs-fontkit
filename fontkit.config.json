@@ -4,33 +4,16 @@
     ],
     "google": [
         "Aleo:ital,wght@0,100..900;1,100..900",
+        "Zen+Old+Mincho:wght@400;700",
         "Fira+Code:wght@300..700",
-        "STIX+Two+Text:ital,wght@0,400..700;1,400..700"
+        "Noto+Serif+SC:wght@200..900"
     ],
     "offline": [
         {
-            "file": "lmroman10-regular.otf",
-            "family": "Latin Modern Roman",
+            "file": "FZXSSJW.TTF",
+            "family": "FZNewShuSong",
             "weight": "400",
             "style": "normal"
-        },
-        {
-            "file": "lmroman10-bold.otf",
-            "family": "Latin Modern Roman",
-            "weight": "700",
-            "style": "normal"
-        },
-        {
-            "file": "lmroman10-italic.otf",
-            "family": "Latin Modern Roman",
-            "weight": "400",
-            "style": "italic"
-        },
-        {
-            "file": "lmroman10-bolditalic.otf",
-            "family": "Latin Modern Roman",
-            "weight": "700",
-            "style": "italic"
         }
     ]
 }
