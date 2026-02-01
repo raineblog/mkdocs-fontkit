@@ -7,13 +7,13 @@
 :root {
     --fontkit-text-font: "Aleo", "FZNewShuSong",
         "Zen Old Mincho", "Chiron Sung HK", "Noto Serif SC", serif;
-    --fontkit-super-title: "lobster", "zhi-mang-xing", serif;
     --fontkit-code-font: "Fira Code",
         "Cascadia Code", "Consolas", "Inconsolata",
         "Menlo", "Monaco", "SF Mono", "Ubuntu Mono",
         "DejaVu Sans Mono", "Courier New", monospace;
-    --fontkit-cjk-cao: "liu-jian-mao-cao", sans-serif;    /* 草书个性字体 */
-    --fontkit-cjk-kai: "ma-shan-zheng", sans-serif;       /* 楷体个性字体 */
-    --fontkit-cjk-xing: "zhi-mang-xing", sans-serif;      /* 行书个性字体 */
-    --fontkit-handwrite: "playwrite-cc-gb-s", sans-serif; /* 手写个性字体 */
+    --fontkit-super-title: "lobster", "zhi-mang-xing";
+    --fontkit-cjk-cao: "liu-jian-mao-cao";    /* 草书个性字体 */
+    --fontkit-cjk-kai: "ma-shan-zheng";       /* 楷体个性字体 */
+    --fontkit-cjk-xing: "zhi-mang-xing";      /* 行书个性字体 */
+    --fontkit-handwrite: "playwrite-cc-gb-s"; /* 手写个性字体 */
 }
