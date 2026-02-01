@@ -6,7 +6,8 @@
         "Aleo:ital,wght@0,100..900;1,100..900",
         "Zen+Old+Mincho:wght@400;700",
         "Fira+Code:wght@300..700",
-        "Noto+Serif+SC:wght@200..900"
+        "Noto+Serif+SC:wght@200..900",
+        "Chiron+Sung+HK:ital,wght@0,200..900;1,200..900"
     ],
     "offline": [
         {
