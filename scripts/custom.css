@@ -1,10 +1,18 @@
-/*
- * Custom CSS for MkDocs Fontkit
- * This file is for demonstration purposes.
- * It will be copied to dist/ and minified during the build process.
+/* Aleo 作为英文首选字体，方正新书宋作为中文首选字体
+ * Zen Old 明朝作为日语备用字体，Chiron 宋体作为繁体中文备用字体
+ * Noto Serif 作为通用的、最后的备用字体
  */
 
-/* Example style */
-body {
-    --font-kit-loaded: true;
+:root {
+    --fontkit-text-font: "Aleo", "FZNewShuSong",
+        "Zen Old Mincho", "Chiron Sung HK", "Noto Serif SC", serif;
+    --fontkit-super-title: "lobster", "zhi-mang-xing", serif;
+    --fontkit-code-font: "Fira Code",   /* Fira Code 作为首选代码字体 */
+        "Cascadia Code", "Consolas", "Inconsolata",
+        "Menlo", "Monaco", "SF Mono", "Ubuntu Mono",
+        "DejaVu Sans Mono", "Courier New", monospace;
+    --fontkit-cjk-cao: "liu-jian-mao-cao", sans-serif;    /* 草书个性字体 */
+    --fontkit-cjk-kai: "ma-shan-zheng", sans-serif;       /* 楷体个性字体 */
+    --fontkit-cjk-xing: "zhi-mang-xing", sans-serif;      /* 行书个性字体 */
+    --fontkit-handwrite: "playwrite-cc-gb-s", sans-serif; /* 手写个性字体 */
 }
