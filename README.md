@@ -1,36 +1,42 @@
 # MkDocs Fontkit
 
-> **Warning**  
-> This project is for **personal use only**. It is designed as a lightweight tool for self-hosting fonts and may not strictly comply with the specific technical specifications or licensing restrictions of Google Fonts, Apple (Typekit), or other providers.  
-> **Commercial use is strictly prohibited.** Use at your own risk.
+> **Note**: This project is maintained primarily for personal use. While bug reports and corrections are welcome, new feature requests may not be implemented as I have limited bandwidth for maintenance. Thank you for scanning this corner of the open source world!
 
-MkDocs Fontkit is a precision font builder that allows you to self-host Adobe Fonts (Typekit), Google Fonts, and local offline fonts with minimal overhead. It uses advanced static analysis to extract font metadata and construction logic without relying on heavyweight browser automation.
+**MkDocs Fontkit** is a high-performance, static analysis-based font builder designed for privacy-conscious and speed-optimized web projects. It enables you to self-host fonts from Adobe Fonts (Typekit) and Google Fonts without relying on client-side JS or external CDNs, and provides tools to optimize large custom font files (like partial CJK fonts) through splitting.
 
-## 🚀 Features
+![License](https://img.shields.io/github/license/raineblog/mkdocs-fontkit)
+![Version](https://img.shields.io/npm/v/@raineblog/mkdocs-fontkit)
 
-- **Typekit Static Analysis**: Ported Typekit URL generation logic (Bloom filters, hashing) to download WOFF2 files directly without Puppeteer/Playwright.
-- **Google Fonts Downloader**: Automatically fetches Google Webfonts, downloads assets locally, and rewrites CSS.
-- **Offline Font Splinter**: Integrates `cn-font-split` to optimize large custom fonts (CJK, Latin Modern, etc.) into chunks.
-- **Production Ready**: Outputs both `fonts.css` and a minified, comment-free `fonts.min.css`.
-- **Zero Browser Dependencies**: Fast, lightweight, and works in restricted environments.
+## ✨ Features
+
+- **🛡️ Privacy & Performance**: Eliminates third-party tracking and reduces layout shifts by serving all fonts locally.
+- **🧠 Static Analysis for Typekit**: Reverses Typekit's dynamic loading logic to generate stable WOFF2 URLs and CSS using Bloom filters and hash generation—no Headless Chrome (Puppeteer/Playwright) required.
+- **📦 Google Fonts Downloader**: Automatically fetches CSS and font binaries from Google Fonts, rewriting paths for local usage.
+- **⚡ Smart CJK Font Splitting**: Integrates `cn-font-split` to chunk large font files (e.g., Chinese/Japanese/Korean) into smaller pieces for faster initial load times.
+- **🎨 Custom CSS Bundling**: Automatically compiles and minifies a `custom.css` alongside your font definitions.
+- **🚀 Production Ready**: Outputs optimized `fonts.min.css` and `fonts.css` ready for immediate deployment.
 
 ## 🛠️ Installation
 
+You can install this tool globally via npm or use it directly from the source.
+
+### via NPM
+
 ```bash
-npm install -g mkdocs-fontkit
+npm install -g @raineblog/mkdocs-fontkit
 ```
 
-Or clone and use locally:
+### via Git (Recommended for development)
 
 ```bash
-git clone https://github.com/mkdocs/mkdocs-fontkit.git
+git clone https://github.com/raineblog/mkdocs-fontkit.git
 cd mkdocs-fontkit
 npm install
 ```
 
 ## ⚙️ Configuration
 
-Create a `fontkit.config.json` in your project root:
+Create a `fontkit.config.json` file in the root of your project to define your font sources:
 
 ```json
 {
@@ -41,8 +47,8 @@ Create a `fontkit.config.json` in your project root:
   ],
   "offline": [
     {
-      "file": "my-local-font.otf",
-      "family": "CustomSans",
+      "file": "source-han-serif.otf",
+      "family": "Source Han Serif",
       "weight": "400",
       "style": "normal"
     }
@@ -50,26 +56,43 @@ Create a `fontkit.config.json` in your project root:
 }
 ```
 
-## 📦 Usage
+### Configuration Options
 
-Run the build script:
+| Option | Type | Description |
+| :--- | :--- | :--- |
+| `typekit` | `string[]` | Array of Adobe Fonts (Typekit) Kit IDs. |
+| `google` | `string[]` | Array of Google Font families (supports standard API query format). |
+| `offline` | `object[]` | Array of local font configurations for splitting/processing. |
+
+## 🚀 Usage
+
+Run the build command to generate your font kit:
 
 ```bash
+fontkit
+# OR if running from source
 npm run build
 ```
 
-The output will be generated in the `dist/` directory:
+### Output
 
-- `dist/fonts.css`: Readable CSS.
-- `dist/fonts.min.css`: Minified CSS for production.
-- `dist/fonts/`: Downloaded font assets.
+The build process will generate a `dist/` directory containing:
 
-## 🤝 Contributions
+- `fonts.css`: Complete, uncompressed CSS definitions.
+- `fonts.min.css`: Minified CSS for production use.
+- `custom.css` / `custom.min.css`: Processed custom styles (if present).
+- `fonts/`: Directory containing all downloaded and split font assets.
 
-This project is primarily maintained for personal use and I do not expect major feature contributions. However, bug reports and small corrections are always welcome.
+## 🤝 Contributing
+
+This project is a personal utility that I've open-sourced in hopes it might be useful to others. 
+
+- **Bug Reports**: Very welcome! If something breaks, please open an issue.
+- **Pull Requests**: Fixes for bugs or documentation errors are appreciated. 
+- **Feature Requests**: Generally, I am not looking to add new features unless they align strictly with my personal use cases. This helps me keep the project maintainable.
 
 ---
 
 ### 🤖 AI Generation Disclosure
 
-This file was generated by **Gemini 3 Flash** (Antigravity AI) following the instructions of the project owner. The content has been reviewed and verified by a human.
+This README and recent project updates were generated by **Antigravity** (Google DeepMind) in collaboration with the project owner. The content has been reviewed to ensure accuracy and compliance with the project's goals.

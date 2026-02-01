@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const fs = require('fs-extra');
 const path = require('path');
 const axios = require('axios');
@@ -6,9 +7,10 @@ const { fontSplit } = require('cn-font-split');
 const CleanCSS = require('clean-css');
 
 const CONFIG_FILE = 'fontkit.config.json';
-const DIST_DIR = path.resolve(__dirname, '../dist');
+const DIST_DIR = path.resolve(process.cwd(), 'dist');
 const FONTS_DIR = path.join(DIST_DIR, 'fonts');
-const OFFLINE_FONTS_DIR = path.resolve(__dirname, '../offline_fonts');
+const OFFLINE_FONTS_DIR = path.resolve(process.cwd(), 'offline_fonts');
+const CUSTOM_CSS_PATH = path.resolve(__dirname, 'custom.css');
 let config = {};
 
 // --- Typekit JS Emulation Logic (Reverse Engineered) ---
@@ -200,7 +202,8 @@ async function extractFontsFromJS(kitId) {
 
     // 1. Fetch JS
     // Try to find local file first for speed/offline dev
-    const localJsPath = path.resolve(__dirname, `../${kitId}.js`);
+    // Try to find local file first for speed/offline dev
+    const localJsPath = path.resolve(process.cwd(), `${kitId}.js`);
     if (await fs.pathExists(localJsPath)) {
         jsContent = await fs.readFile(localJsPath, 'utf8');
         console.log(`  Loaded local JS file: ${localJsPath}`);
@@ -460,6 +463,32 @@ async function main() {
 
     const fontsMinCssPath = path.join(DIST_DIR, 'fonts.min.css');
     await fs.outputFile(fontsMinCssPath, minified.styles);
+
+    // Process custom.css
+    if (await fs.pathExists(CUSTOM_CSS_PATH)) {
+        console.log('--- Processing Custom CSS ---');
+        const customCssContent = await fs.readFile(CUSTOM_CSS_PATH, 'utf8');
+        
+        // Output original
+        const customCssDistPath = path.join(DIST_DIR, 'custom.css');
+        await fs.outputFile(customCssDistPath, customCssContent);
+
+        // Output minified
+        const customMinified = new CleanCSS({
+            level: 2,
+            format: false
+        }).minify(customCssContent);
+
+        if (customMinified.errors.length > 0) {
+            console.error('Custom CSS Minification errors:', customMinified.errors);
+        }
+
+        const customMinCssDistPath = path.join(DIST_DIR, 'custom.min.css');
+        await fs.outputFile(customMinCssDistPath, customMinified.styles);
+        
+        console.log(`- ${customCssDistPath}`);
+        console.log(`- ${customMinCssDistPath}`);
+    }
 
     console.log('Build complete!');
     console.log(`- ${fontsCssPath}`);

@@ -1,0 +1,10 @@
+/*
+ * Custom CSS for MkDocs Fontkit
+ * This file is for demonstration purposes.
+ * It will be copied to dist/ and minified during the build process.
+ */
+
+/* Example style */
+body {
+    --font-kit-loaded: true;
+}
