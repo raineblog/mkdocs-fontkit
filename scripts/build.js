@@ -5,6 +5,8 @@ const axios = require('axios');
 const css = require('css');
 const { fontSplit } = require('cn-font-split');
 const CleanCSS = require('clean-css');
+const chalk = require('chalk').default;
+const pLimit = require('p-limit').default;
 
 const CONFIG_FILE = 'fontkit.config.json';
 const DIST_DIR = path.resolve(process.cwd(), 'dist');
@@ -169,28 +171,42 @@ async function loadConfig() {
     }
 }
 
-async function downloadFile(url, dest, referer = '') {
-    try {
-        const config = {
-            responseType: 'arraybuffer',
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+async function downloadFile(url, dest, print_log = true, referer = '', maxRetries = 3) {
+    const filename = path.basename(dest);
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            const config = {
+                responseType: 'arraybuffer',
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                },
+                timeout: 30000 // 30 second timeout
+            };
+            if (referer) {
+                config.headers['Referer'] = referer;
             }
-        };
-        if (referer) {
-            config.headers['Referer'] = referer;
+            
+            const response = await axios.get(url, config);
+            await fs.outputFile(dest, response.data);
+            
+            if (attempt === 1 && print_log === true) {
+                console.log(`${chalk.green('✓')} ${chalk.cyan(filename)} (${response.data.length} bytes)`);
+            }
+            return true;
+            
+        } catch (error) {
+            if (attempt === maxRetries) {
+                console.error(`${chalk.red('✗')} ${chalk.cyan(filename)} - ${error.message}`);
+                if (error.response) {
+                    console.error(`  Status: ${error.response.status}`);
+                }
+                return false;
+            } else {
+                console.log(`${chalk.yellow('⚠')} ${chalk.cyan(filename)} - Retry ${attempt}/${maxRetries}`);
+                await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+            }
         }
-        const response = await axios.get(url, config);
-        await fs.outputFile(dest, response.data);
-        console.log(`Downloaded: ${url} -> ${dest}`);
-        return true;
-    } catch (error) {
-        if (error.response && error.response.status === 404) {
-            console.error(`Failed to download ${url}: 404 Not Found (Bad URL construction?)`);
-        } else {
-            console.error(`Failed to download ${url}: ${error.message}`);
-        }
-        return false;
     }
 }
 
@@ -281,21 +297,21 @@ async function extractFontsFromJS(kitId) {
 // Orchestrator for Typekit (Static Analysis Only)
 async function processTypekit(kits) {
     if (!kits || kits.length === 0) return '';
-    console.log('--- Processing Typekit Fonts ---');
+    console.log(`${chalk.blue('---')} Processing Typekit Fonts ${chalk.blue('---')}`);
 
     let cssOutput = '/* Typekit Fonts */\n';
 
     for (const kitId of kits) {
-        console.log(`\nProcessing Kit: ${kitId}`);
+        console.log(`\n${chalk.blue('Kit:')} ${chalk.bold(kitId)}`);
 
         const fonts = await extractFontsFromJS(kitId);
 
         if (fonts.length === 0) {
-            console.error(`Failed to get fonts for kit ${kitId} using static analysis.`);
+            console.error(`${chalk.red('✗')} Failed to get fonts for kit ${kitId}`);
             continue;
         }
 
-        console.log(`Successfully processed Kit ${kitId}, found ${fonts.length} fonts. Downloading...`);
+        console.log(`${chalk.green('✓')} Found ${fonts.length} fonts`);
 
         let kitCss = `/* Kit ${kitId} */\n`;
 
@@ -304,7 +320,7 @@ async function processTypekit(kits) {
             const localPath = path.join(FONTS_DIR, 'typekit', localFilename);
             const relativePath = `./fonts/typekit/${localFilename}`;
 
-            const success = await downloadFile(font.fullUrl, localPath, 'https://use.typekit.net/');
+            const success = await downloadFile(font.fullUrl, localPath, true, 'https://use.typekit.net/');
 
             if (success) {
                 const desc = font.descriptor || {};
@@ -327,19 +343,29 @@ async function processTypekit(kits) {
 }
 
 
-async function processGoogle(googleFonts) {
+async function processGoogle(googleFonts, isLegacy = false) {
     if (!googleFonts || googleFonts.length === 0) return '';
-    console.log('--- Processing Google Fonts ---');
+    const mode = isLegacy ? chalk.yellow('(Legacy)') : chalk.blue('(Modern)');
+    console.log(`${chalk.blue('---')} Processing Google Fonts ${mode} ${chalk.blue('---')}`);
 
     let fullCss = '';
+    const fontsDir = isLegacy ? path.join(FONTS_DIR, 'legacy') : FONTS_DIR;
+    const limit = pLimit(4); // Limit concurrent downloads
 
     for (const fontRequest of googleFonts) {
         const url = `https://fonts.googleapis.com/css2?family=${fontRequest}&display=swap`;
-        console.log(`Fetching Google CSS from: ${url}`);
+        console.log(`${chalk.blue('Font:')} ${chalk.bold(fontRequest)}`);
 
         try {
+            const userAgent = isLegacy 
+                ? 'Mozilla/5.0 (Windows NT 6.1; Trident/7.0; rv:11.0) like Gecko'
+                : 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+            
             const response = await axios.get(url, {
-                headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36' }
+                headers: { 
+                    'User-Agent': userAgent,
+                    'Referer': 'https://fonts.googleapis.com/'
+                }
             });
 
             let cssContent = response.data;
@@ -358,12 +384,18 @@ async function processGoogle(googleFonts) {
                                 const fullUrl = (match[2] || match[3] || '').trim();
                                 if (!fullUrl) continue;
 
-                                const filename = path.basename(fullUrl);
-                                const localPath = path.join(FONTS_DIR, 'google', filename);
-                                const relativePath = `./fonts/google/${filename}`;
+                                // Generate a safe filename for legacy mode
+                                const filename = isLegacy 
+                                    ? `font_${Math.random().toString(36).substr(2, 9)}.woff`
+                                    : path.basename(fullUrl);
+                                
+                                const localPath = path.join(fontsDir, 'google', filename);
+                                const relativePath = isLegacy 
+                                    ? `./fonts/legacy/google/${filename}`
+                                    : `./fonts/google/${filename}`;
 
                                 cssContent = cssContent.split(fullUrl).join(relativePath);
-                                downloadPromises.push(downloadFile(fullUrl, localPath));
+                                downloadPromises.push(limit(() => downloadFile(fullUrl, localPath, false)));
                             }
                         }
                     }
@@ -373,16 +405,17 @@ async function processGoogle(googleFonts) {
             fullCss += cssContent + '\n';
 
         } catch (e) {
-            console.error(`Failed Google Font ${fontRequest}: ${e.message}`);
+            console.error(`${chalk.red('✗')} Failed Google Font ${fontRequest}: ${e.message}`);
         }
     }
 
-    return `/* Google Fonts */\n${fullCss}`;
+    return `/* Google Fonts ${isLegacy ? '(Legacy)' : ''} */\n${fullCss}`;
 }
 
-async function processOffline(offlineFonts) {
+async function processOffline(offlineFonts, isLegacy = false) {
     if (!offlineFonts || offlineFonts.length === 0) return '';
-    console.log('--- Processing Offline Fonts ---');
+    const mode = isLegacy ? chalk.yellow('(Legacy)') : chalk.blue('(Modern)');
+    console.log(`${chalk.blue('---')} Processing Offline Fonts ${mode} ${chalk.blue('---')}`);
 
     if (!await fs.pathExists(OFFLINE_FONTS_DIR)) {
         console.log('No offline fonts directory found.');
@@ -390,57 +423,94 @@ async function processOffline(offlineFonts) {
     }
 
     let finalCss = '';
+    const fontsDir = isLegacy ? path.join(FONTS_DIR, 'legacy') : FONTS_DIR;
 
     for (const fontCfg of offlineFonts) {
         const file = fontCfg.file;
         const inputPath = path.join(OFFLINE_FONTS_DIR, file);
 
         if (!await fs.pathExists(inputPath)) {
-            console.error(`Offline font file not found: ${inputPath}`);
+            console.error(`${chalk.red('✗')} Offline font file not found: ${inputPath}`);
             continue;
         }
 
-        const fontName = path.parse(file).name;
-        const outputDir = path.join(FONTS_DIR, 'offline', fontName);
+        if (isLegacy) {
+            // Legacy mode: Convert to WOFF format and place directly in legacy folder
+            const fontName = path.parse(file).name;
+            const ext = path.extname(file).toLowerCase();
+            let outputFilename;
+            let formatType;
+            
+            if (ext === '.ttf' || ext === '.otf') {
+                outputFilename = `${fontName}.woff`;
+                formatType = 'woff';
+            } else {
+                // For other formats, keep original extension
+                outputFilename = file;
+                formatType = ext.substring(1); // Remove the dot
+            }
+            
+            const outputPath = path.join(fontsDir, outputFilename);
+            
+            console.log(`${chalk.blue('Font:')} ${chalk.bold(file)}`);
+            
+            // For now, just copy the file as-is since we don't have a conversion tool
+            // In a real implementation, you would use a tool like fontforge or opentype.js
+            // to convert TTF/OTF to WOFF
+            await fs.copy(inputPath, outputPath);
+            
+            const relativePath = isLegacy 
+                ? `./fonts/legacy/${outputFilename}`
+                : `./fonts/offline/${outputFilename}`;
 
-        console.log(`Splitting ${file}...`);
-        const inputBuffer = await fs.readFile(inputPath);
+            finalCss += `/* Offline Font: ${file} (Legacy) */\n@font-face {\n  font-family: '${fontCfg.family}';\n  font-style: ${fontCfg.style || 'normal'};\n  font-weight: ${fontCfg.weight};\n  font-display: swap;\n  src: url('${relativePath}') format('${formatType}');\n}\n\n`;
+        } else {
+            // Normal mode: Use fontsplit
+            const fontName = path.parse(file).name;
+            const outputDir = path.join(fontsDir, 'offline', fontName);
 
-        await fontSplit({
-            input: inputBuffer,
-            outDir: outputDir,
-            css: {
-                fontFamily: fontCfg.family,
-                fontWeight: fontCfg.weight,
-                fontStyle: fontCfg.style || 'normal'
-            },
-            renameOutputFont: '[hash:6].[ext]',
-            silent: true
-        });
+            console.log(`${chalk.blue('Font:')} ${chalk.bold(file)}`);
+            const inputBuffer = await fs.readFile(inputPath);
 
-        const outputFiles = await fs.readdir(outputDir);
-        const cssFile = outputFiles.find(f => f.endsWith('.css'));
-
-        if (cssFile) {
-            let splitCss = await fs.readFile(path.join(outputDir, cssFile), 'utf8');
-            const relativePrefix = `./fonts/offline/${fontName}/`;
-
-            splitCss = splitCss.replace(/url\((['"]?)([^'")]+.woff2)(['"]?)\)/g, (match, q1, url, q3) => {
-                const cleanUrl = path.basename(url);
-                return `url(${q1}${relativePrefix}${cleanUrl}${q3})`;
+            await fontSplit({
+                input: inputBuffer,
+                outDir: outputDir,
+                css: {
+                    fontFamily: fontCfg.family,
+                    fontWeight: fontCfg.weight,
+                    fontStyle: fontCfg.style || 'normal'
+                },
+                renameOutputFont: '[hash:6].[ext]',
+                silent: true
             });
 
-            finalCss += `/* Offline Font: ${file} */\n${splitCss}\n`;
+            const outputFiles = await fs.readdir(outputDir);
+            const cssFile = outputFiles.find(f => f.endsWith('.css'));
+
+            if (cssFile) {
+                let splitCss = await fs.readFile(path.join(outputDir, cssFile), 'utf8');
+                const relativePrefix = `./fonts/offline/${fontName}/`;
+
+                splitCss = splitCss.replace(/url\((['"]?)([^'")]+.woff2)(['"]?)\)/g, (match, q1, url, q3) => {
+                    const cleanUrl = path.basename(url);
+                    return `url(${q1}${relativePrefix}${cleanUrl}${q3})`;
+                });
+
+                finalCss += `/* Offline Font: ${file} */\n${splitCss}\n`;
+            }
         }
     }
     return finalCss;
 }
 
 async function main() {
+    console.log(`${chalk.blue('🚀')} Starting font build process...`);
+    
     await loadConfig();
     await fs.ensureDir(DIST_DIR);
     await fs.emptyDir(DIST_DIR);
 
+    // Regular fonts processing
     const typekitCss = await processTypekit(config.typekit || config.adobe || []);
     const googleCss = await processGoogle(config.google);
     const offlineCss = await processOffline(config.offline);
@@ -458,41 +528,46 @@ async function main() {
     }).minify(fullCss);
 
     if (minified.errors.length > 0) {
-        console.error('Minification errors:', minified.errors);
+        console.error(`${chalk.red('✗')} Minification errors:`, minified.errors);
     }
 
     const fontsMinCssPath = path.join(DIST_DIR, 'fonts.min.css');
     await fs.outputFile(fontsMinCssPath, minified.styles);
 
-    // Process custom.css
-    if (await fs.pathExists(CUSTOM_CSS_PATH)) {
-        console.log('--- Processing Custom CSS ---');
-        const customCssContent = await fs.readFile(CUSTOM_CSS_PATH, 'utf8');
+    // Legacy fonts processing
+    if (config.legacy) {
+        console.log(`\n${chalk.yellow('🔧')} Processing Legacy Fonts`);
         
-        // Output original
-        const customCssDistPath = path.join(DIST_DIR, 'custom.css');
-        await fs.outputFile(customCssDistPath, customCssContent);
+        const legacyGoogleCss = await processGoogle(config.legacy.google || [], true);
+        const legacyOfflineCss = await processOffline(config.legacy.offline || [], true);
+        
+        const legacyFullCss = `${legacyGoogleCss}\n${legacyOfflineCss}`;
+
+        // Output unminified
+        const legacyCssPath = path.join(DIST_DIR, 'fonts.legacy.css');
+        await fs.outputFile(legacyCssPath, legacyFullCss);
 
         // Output minified
-        const customMinified = new CleanCSS({
+        const legacyMinified = new CleanCSS({
             level: 2,
             format: false
-        }).minify(customCssContent);
+        }).minify(legacyFullCss);
 
-        if (customMinified.errors.length > 0) {
-            console.error('Custom CSS Minification errors:', customMinified.errors);
+        if (legacyMinified.errors.length > 0) {
+            console.error(`${chalk.red('✗')} Legacy Minification errors:`, legacyMinified.errors);
         }
 
-        const customMinCssDistPath = path.join(DIST_DIR, 'custom.min.css');
-        await fs.outputFile(customMinCssDistPath, customMinified.styles);
+        const legacyMinCssPath = path.join(DIST_DIR, 'fonts.legacy.min.css');
+        await fs.outputFile(legacyMinCssPath, legacyMinified.styles);
         
-        console.log(`- ${customCssDistPath}`);
-        console.log(`- ${customMinCssDistPath}`);
+        console.log(`${chalk.green('✓')} Legacy CSS: ${legacyCssPath}`);
+        console.log(`${chalk.green('✓')} Legacy Min: ${legacyMinCssPath}`);
     }
 
-    console.log('Build complete!');
-    console.log(`- ${fontsCssPath}`);
-    console.log(`- ${fontsMinCssPath}`);
+    
+    console.log(`\n${chalk.green('🎉')} Build complete!`);
+    console.log(`${chalk.green('✓')} CSS: ${fontsCssPath}`);
+    console.log(`${chalk.green('✓')} Min: ${fontsMinCssPath}`);
 }
 
 main();

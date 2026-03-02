@@ -16,5 +16,21 @@
             "weight": "400",
             "style": "normal"
         }
-    ]
+    ],
+    "legacy": {
+        "google": [
+            "Aleo:ital,wght@0,100..900;1,100..900",
+            "Zen+Old+Mincho:wght@400;700",
+            "Fira+Code:wght@300..700",
+            "Noto+Serif+SC:wght@200..900"
+        ],
+        "offline": [
+            {
+                "file": "FZXSSJW.TTF",
+                "family": "FZNewShuSong",
+                "weight": "400",
+                "style": "normal"
+            }
+        ]
+    }
 }
