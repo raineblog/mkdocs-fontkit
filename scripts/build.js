@@ -570,4 +570,10 @@ async function main() {
     console.log(`${chalk.green('✓')} Min: ${fontsMinCssPath}`);
 }
 
-main();
+main().then(() => {
+  console.log('Build script completed successfully.');
+  process.exit(0);
+}).catch(err => {
+  console.error('Build script failed:', err);
+  process.exit(1);
+});
